@@ -7,7 +7,7 @@ engine.cpp
 )
 target_link_libraries(engine PUBLIC
 sigmarule
-Boost::asio
+Boost::system
 concurrentqueue
 sysmonReceiver
 quill_static

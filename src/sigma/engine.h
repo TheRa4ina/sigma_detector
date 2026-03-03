@@ -12,7 +12,11 @@
 #include <blockingconcurrentqueue.h>
 #include <sigma/rule_parser/rule_parser.h>
 #include <sigma/rule_parser/rule.h>
+
+#ifdef WIN32
 #include <event/logsources/windows/sysmon/sysmon_receiver.h>
+#endif
+
 #include <c4/substr.hpp>
 #include <c4/std/string.hpp>
 #include <c4/charconv.hpp>
@@ -52,6 +56,7 @@ private:
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<Verdict>> m_verdictQueue;
 
     channel::SysmonReceiver m_receiver;
+
     boost::asio::thread_pool m_pool;
     std::vector<sigma::Rule> m_rules;
 

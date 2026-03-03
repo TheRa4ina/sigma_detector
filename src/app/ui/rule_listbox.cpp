@@ -1,4 +1,5 @@
 #include "rule_listbox.h"
+#include <format>
 #include <imgui.h>
 
 namespace ui {

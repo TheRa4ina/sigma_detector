@@ -23,7 +23,7 @@ endif()
 find_package(Threads REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 3 REQUIRED)
-find_package(Boost 1.70 REQUIRED COMPONENTS system asio)
+find_package(Boost 1.70 REQUIRED COMPONENTS system)
 
 add_subdirectory(3rd_party)
 enable_testing()

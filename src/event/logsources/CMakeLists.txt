@@ -1,1 +1,5 @@
-add_subdirectory(windows)
+if (WIN32)
+    add_subdirectory(windows)
+else()
+    message(STATUS "Not building Windows-specific code.")
+endif()
