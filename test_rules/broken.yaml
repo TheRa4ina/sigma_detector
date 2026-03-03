@@ -1,0 +1,20 @@
+title: nothing
+id: ae2c480c-d22e-4cbb-a1ef-1f865cfcdaa7
+status: test
+description: Detects nothing
+references:
+    - https://sigconverter.io/
+author: ra4ina
+date: 2026-01-22
+modified: 2026-01-22
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|endswith:
+            - 'nothing'
+    condition: one of selection*
+falsepositives:
+    - detects nothing
+level: low

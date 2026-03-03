@@ -1,0 +1,21 @@
+title: notepad++ diff
+id: 2d95f6df-783a-44ed-bbbf-11beb877312f
+status: test
+description: Detects notepad++ launch
+references:
+    - https://sigconverter.io/
+author: ra4ina
+date: 2026-01-23
+modified: 2026-01-23
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|endswith:
+            - 'notepad++.exe'
+            - 'notepadpp.exe'
+    condition: all of selection*
+falsepositives:
+    - ends in notepad++.exe
+level: low

@@ -1,0 +1,5 @@
+The code in Dear ImGui embeds a copy of ProggyClean.ttf by Tristan Grimmer, a 13 pixels high, pixel-perfect font used by default. ProggyClean does not scale very nicely.
+
+The code in Dear ImGui embeds a partial copy of ProggyVector.ttf by Tristan Grimmer and Source Foundry Authors, a font mimicking ProggyClean which does scale nicely.
+
+We embed fonts in the code so you can use Dear ImGui without any file system access. If you use either of those fonts in your shipping product you should include their license as part of your software (see below for links). If you don't use them you can set IMGUI_DISABLE_DEFAULT_FONT in your imconfig.h file to ship binaries without the fonts and save about ~26 KB.

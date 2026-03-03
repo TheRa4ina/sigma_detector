@@ -1,0 +1,4 @@
+/.vs
+/build
+!**CMakeLists.txt
+/vcpkg_installed
