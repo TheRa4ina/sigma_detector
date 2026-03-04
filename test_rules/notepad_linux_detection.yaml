@@ -1,0 +1,29 @@
+title: Linux Text Editor Launch
+id: 7f4b0a62-3c8e-4e12-9d6a-2c6b7b4d91aa
+status: test
+description: Detects launch of common Linux text editors
+author: ra4ina
+date: 2026-03-04
+modified: 2026-03-04
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        Image|endswith:
+            - /gedit
+            - /kate
+            - /xed
+            - /mousepad
+            - /nano
+            - /vim
+            - /vi
+        CommandLine|contains:
+            - gedit
+            - kate
+            - nano
+            - vim
+    condition: selection
+falsepositives:
+    - administrative or development activity
+level: low

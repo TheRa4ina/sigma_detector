@@ -20,6 +20,13 @@ if(MSVC) # treat all files as utf8 encoded
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8")
 endif()
 
+if(UNIX)
+
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SYSTEMD REQUIRED IMPORTED_TARGET libsystemd)
+
+endif()
+
 find_package(Threads REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 3 REQUIRED)

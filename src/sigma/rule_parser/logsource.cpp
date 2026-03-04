@@ -40,6 +40,11 @@ namespace sigma {
         {"file_rename", {
             {"ETW Provider", {"Microsoft-Windows-Kernel-File"}}
         }},
+    }},
+    { "linux", {
+        {"process_creation",    SysmonFilterEvents({"1"}) },
+        {"network_connection",  SysmonFilterEvents({"3"}) },
+        {"process_termination", SysmonFilterEvents({"5"}) },
     }}
     };
 

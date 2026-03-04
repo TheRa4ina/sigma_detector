@@ -1,5 +1,7 @@
 if (WIN32)
     add_subdirectory(windows)
+elseif(UNIX)
+    add_subdirectory(linux)
 else()
-    message(STATUS "Not building Windows-specific code.")
+    message(STATUS "Not building Windows- or Linux-specific code.")
 endif()

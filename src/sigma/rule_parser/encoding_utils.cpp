@@ -1,6 +1,18 @@
-﻿#include <rule_parser/encoding_utils.h>
+﻿#pragma once
+
+#include <rule_parser/encoding_utils.h>
 #include <base64.hpp>
-#include <codecvt>
+#include <vector>
+#include <stdexcept>
+
+#ifdef _WIN32
+    #include <windows.h>
+    #include <codecvt>
+    #include <locale>
+#else
+    #include <iconv.h>
+    #include <cstring>
+#endif
 
 namespace utils {
 
@@ -58,10 +70,41 @@ namespace utils {
         return encoded;
     }
 
+#ifdef _WIN32
     std::u16string Utf8ToUtf16(const std::string& s) {
         std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conv;
         return conv.from_bytes(s);
     }
+#elif __linux__ // _WIN32
+        std::u16string Utf8ToUtf16(const std::string& s)
+    {
+        if (s.empty()) return {};
+
+        iconv_t cd = iconv_open("UTF-16LE", "UTF-8");
+        if (cd == (iconv_t)-1)
+            throw std::runtime_error("iconv_open failed");
+
+        size_t inBytes = s.size();
+        size_t outBytes = inBytes * 2 + 2;
+
+        std::vector<char> buffer(outBytes);
+        char* inBuf = const_cast<char*>(s.data());
+        char* outBuf = buffer.data();
+
+        if (iconv(cd, &inBuf, &inBytes, &outBuf, &outBytes) == (size_t)-1) {
+            iconv_close(cd);
+            throw std::runtime_error("iconv conversion failed");
+        }
+
+        size_t convertedSize = buffer.size() - outBytes;
+        iconv_close(cd);
+
+        return std::u16string(
+            reinterpret_cast<char16_t*>(buffer.data()),
+            convertedSize / 2
+        );
+    }
+#endif // __linux__
 
     std::string ToUtf16leBytes(const std::u16string& u16, bool bom) {
         std::vector<uint8_t> out;

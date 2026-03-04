@@ -3,6 +3,8 @@
 #include <pugixml.hpp>
 #include <iostream>
 #include "sysmon_normalizer.h"
+#define TRACE_PREFIX "Sysmon normalizer:\t"
+#include <quill/logging.h>
 
 
 namespace {
@@ -65,7 +67,7 @@ namespace channel {
             }
         }
         catch (const std::exception& e) {
-            std::cerr << __FUNCTION__ << e.what();
+            LOG_ERROR("{}",e.what());
         }
         return event;
     }

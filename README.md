@@ -9,6 +9,9 @@
 - glfw3
 - opengl
 
+Для ubuntu также понадобится:
+`sudo apt-get install libsystemd-dev`
+
 После этого можно компилировать всё остальное
 
 ## Уточнения

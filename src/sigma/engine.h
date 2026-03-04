@@ -15,6 +15,8 @@
 
 #ifdef WIN32
 #include <event/logsources/windows/sysmon/sysmon_receiver.h>
+#elif __linux__
+#include <event/logsources/linux/sysmon/sysmon_receiver.h>
 #endif
 
 #include <c4/substr.hpp>
