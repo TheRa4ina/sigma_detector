@@ -1,4 +1,5 @@
 #include <event/event.h>
+#define NOMINMAX
 #include <windows.h>
 #include <pugixml.hpp>
 #include <iostream>

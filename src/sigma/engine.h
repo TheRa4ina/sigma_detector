@@ -9,6 +9,7 @@
 #include <vector>
 #include <atomic>
 #include <string>
+#include <stop_token>
 #include <blockingconcurrentqueue.h>
 #include <sigma/rule_parser/rule_parser.h>
 #include <sigma/rule_parser/rule.h>
@@ -42,7 +43,7 @@ public:
     void Subscribe(VerdictCallback cb);
     void SetRules(const std::vector<std::string>& rules);
     void SetRules(const std::unordered_set<std::filesystem::path>& rulePathss);
-    bool IsRunning();
+    inline bool IsRunning();
 
     void Start();
     void Stop();
@@ -50,24 +51,26 @@ public:
 private:
     Verdict MatchRules(const Event& event);
     void SetRules(std::vector<sigma::Rule> rulesContent);
-    void DispatchLoop();
-    void ConsumeLoop();
+    void DispatchLoop(std::stop_token st);
+    void ConsumeLoop(std::stop_token st);
     void NotifySubscribers(const Verdict& v);
 
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<Event>> m_eventQueue;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<Verdict>> m_verdictQueue;
+    boost::asio::thread_pool m_pool;
 
     channel::SysmonReceiver m_receiver;
 
-    boost::asio::thread_pool m_pool;
     std::vector<sigma::Rule> m_rules;
 
     std::vector<VerdictCallback> m_subscribers;
     std::mutex m_subMutex;
 
-    std::thread m_dispatcher;
-    std::thread m_consumer;
+    std::jthread m_dispatcher;
+    std::jthread m_consumer;
+    std::stop_source m_stopSource;
     std::atomic<bool> m_running;
+
     sigma::RuleParser m_parser;
 };
 

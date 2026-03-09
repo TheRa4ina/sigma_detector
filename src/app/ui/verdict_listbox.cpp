@@ -15,7 +15,6 @@ namespace ui {
 
         if (ImGui::BeginListBox("##Verdicts", ImVec2(-FLT_MIN, -ImGui::GetFrameHeight())))
         {
-            m_verdictBuffer.Update();
             const auto& verdicts = m_verdictBuffer.GetVerdicts();
 
             for (int i = 0; i < (int)verdicts.size(); ++i)

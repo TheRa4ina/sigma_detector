@@ -46,13 +46,13 @@ void Engine::Subscribe(VerdictCallback cb) {
 }
 
 void Engine::SetRules(std::vector<sigma::Rule> rules) {
-    assert(!m_running);
+    assert(!IsRunning());
     m_rules = std::move(rules);
 }
 
 void Engine::SetRules(const std::vector<std::string>& rules) {
     LOG_INFO("Set rules called with: {}", rules);
-    if (m_running) {
+    if (IsRunning()) {
         throw std::runtime_error("Cannot setRules while engine running");
     }
     std::vector<sigma::Rule> newRules;
@@ -66,7 +66,7 @@ void Engine::SetRules(const std::vector<std::string>& rules) {
 
 void Engine::SetRules(const std::unordered_set<std::filesystem::path>& rulePaths) {
     LOG_INFO("Set rules called with: {}", rulePaths);
-    if (m_running) {
+    if (IsRunning()) {
         throw std::runtime_error("Cannot setRules while engine running");
     }
 
@@ -88,33 +88,37 @@ void Engine::SetRules(const std::unordered_set<std::filesystem::path>& rulePaths
     m_rules.swap(newRules);
 }
 
-bool Engine::IsRunning()
+inline bool Engine::IsRunning()
 {
     return m_running.load(std::memory_order_relaxed);
 }
 
 void Engine::Start() {
     LOG_INFO("Starting engine");
-    if (m_running.exchange(true)) return;
+    if (m_running.exchange(true, std::memory_order_relaxed)) return;
+
+    m_stopSource = std::stop_source();
     m_receiver.Start(m_eventQueue);
 
-    m_dispatcher = std::thread([this]() { DispatchLoop(); });
-    m_consumer = std::thread([this]() { ConsumeLoop(); });
+    std::stop_token stoken = m_stopSource.get_token();
+    m_dispatcher = std::jthread([this,stoken]() { DispatchLoop(stoken); });
+    m_consumer = std::jthread([this,stoken]() { ConsumeLoop(stoken); });
     LOG_INFO("Engine finished starting");
 }
 
 void Engine::Stop() {
     LOG_INFO("Stopping engine");
-    if (!m_running.exchange(false)) return;
+    if (m_running.exchange(false, std::memory_order_relaxed)) return;
+
+    m_stopSource.request_stop();
     m_receiver.Stop();
     m_pool.join();
-    m_dispatcher.join();
-    m_consumer.join();
     LOG_INFO("Engine stopped");
 }
 
 Verdict Engine::MatchRules(const Event& event) {
     Verdict v;
+    v.payload = event;
     for (const auto& rule : m_rules) {
         v.result = rule.Match(event);
         if (v.result)
@@ -127,15 +131,14 @@ Verdict Engine::MatchRules(const Event& event) {
     }
 
     c4::atoi(c4::to_csubstr(event.fields.at("EventID")), &v.event_id);
-    v.payload = event;
     return v;
 }
 
-void Engine::DispatchLoop() {
+void Engine::DispatchLoop(std::stop_token st) {
     Event e;
     try {
         LOG_INFO("Dispatch loop: started");
-        while (m_running) {
+        while (!st.stop_requested()) {
             bool got = m_eventQueue->wait_dequeue_timed(e, std::chrono::milliseconds(100));
             if (got)
             {
@@ -159,10 +162,10 @@ void Engine::DispatchLoop() {
     }
 }
 
-void Engine::ConsumeLoop() {
+void Engine::ConsumeLoop(std::stop_token st) {
     Verdict v;
     LOG_INFO("Consume loop: started");
-    while (m_running) {
+    while (!st.stop_requested()) {
         bool got = m_verdictQueue->wait_dequeue_timed(v, std::chrono::milliseconds(100));
         if (got) {
             NotifySubscribers(v);
