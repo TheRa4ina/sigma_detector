@@ -14,9 +14,12 @@ namespace bl {
         ~VerdictBuffer() = default;
 
         std::vector<sigma::Verdict> GetVerdicts() const;
+        std::vector<sigma::Verdict> GetVerdictsPage(size_t page, size_t pageSize) const;
+        size_t GetTotalVerdicts() const;
+
     private:
         std::vector<sigma::Verdict> m_uiVerdicts;
-        static constexpr size_t MAX_VERDICTS = 1000;
+        static constexpr size_t MAX_VERDICTS = 100000;
 
         moodycamel::BlockingConcurrentQueue<sigma::Verdict> m_buffer;
         std::jthread m_consumerThread;

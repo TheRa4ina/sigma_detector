@@ -20,12 +20,19 @@ namespace ui {
         void Show();
 
     private:
+
+        enum class FileBrowserPurpose {
+            AddRule,
+            ExportVerdicts
+        };
+
         std::string m_errorMessage;
 
         std::string m_viewerBuffer;
         std::shared_ptr<sigma::Engine> m_engine;// Todo pretty sure can make it unique ptr
         std::shared_ptr<bl::EngineConfig> m_config;
         std::shared_ptr<ImGui::FileBrowser> m_fileBrowser;// forced to use shared ptr because whole implementation is in header
+        FileBrowserPurpose m_fileBrowserPurpose = FileBrowserPurpose::AddRule;
 
         RuleListBox m_ruleListBox;
         VerdictListBox m_verdictListBox;

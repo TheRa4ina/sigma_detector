@@ -51,8 +51,8 @@ public:
 private:
     Verdict MatchRules(const Event& event);
     void SetRules(std::vector<sigma::Rule> rulesContent);
-    void DispatchLoop(std::stop_token st);
-    void ConsumeLoop(std::stop_token st);
+    void DispatchLoop();
+    void ConsumeLoop();
     void NotifySubscribers(const Verdict& v);
 
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<Event>> m_eventQueue;
@@ -66,9 +66,8 @@ private:
     std::vector<VerdictCallback> m_subscribers;
     std::mutex m_subMutex;
 
-    std::jthread m_dispatcher;
-    std::jthread m_consumer;
-    std::stop_source m_stopSource;
+    std::thread m_dispatcher;
+    std::thread m_consumer;
     std::atomic<bool> m_running;
 
     sigma::RuleParser m_parser;

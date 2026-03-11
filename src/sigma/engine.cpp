@@ -11,13 +11,18 @@ namespace sigma {
 
 namespace {
     // TODO refactor into common/utility module
-    static std::string ReadFileToString(const std::filesystem::path& path) {
+    std::string ReadFileToString(const std::filesystem::path& path) {
         std::ifstream file(path);
-        std::ostringstream ss;
-        ss << file.rdbuf();
-        return ss.str();
-    }
+        if (!file.is_open()) {
+            std::u8string utf8Path = path.u8string();
+            auto displayPath = std::string(reinterpret_cast<char const*>(utf8Path.data()), utf8Path.size());
+            throw std::runtime_error(std::format("Cannot open file: {}", displayPath));
+        }
 
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+    }
     template<typename K, typename V>
     std::string UnorderedMapToString(const std::unordered_map<K, V>& map) {
         std::stringstream ss;
@@ -73,8 +78,8 @@ void Engine::SetRules(const std::unordered_set<std::filesystem::path>& rulePaths
     std::vector<sigma::Rule> newRules;
     m_rules.reserve(rulePaths.size());
     for (const auto rulePath : rulePaths) {
-        std::string ruleContents = ReadFileToString(rulePath);
         try {
+            std::string ruleContents = ReadFileToString(rulePath);
             sigma::Rule rule = m_parser.Parse(ruleContents);
             newRules.emplace_back(std::move(rule));
         }
@@ -82,7 +87,7 @@ void Engine::SetRules(const std::unordered_set<std::filesystem::path>& rulePaths
             // TODO perhaps i should create a wrapper for converting u8 to char const
             std::u8string utf8Path = rulePath.u8string();
             auto displayPath = std::string(reinterpret_cast<char const*>(utf8Path.data()), utf8Path.size());
-            throw std::runtime_error(std::format("Error while parsing rule at: {}\n {}", displayPath, e.what()));
+            throw std::runtime_error(std::format("Error while set rule at: {}\n {}", displayPath, e.what()));
         }
     }
     m_rules.swap(newRules);
@@ -97,22 +102,21 @@ void Engine::Start() {
     LOG_INFO("Starting engine");
     if (m_running.exchange(true, std::memory_order_relaxed)) return;
 
-    m_stopSource = std::stop_source();
     m_receiver.Start(m_eventQueue);
 
-    std::stop_token stoken = m_stopSource.get_token();
-    m_dispatcher = std::jthread([this,stoken]() { DispatchLoop(stoken); });
-    m_consumer = std::jthread([this,stoken]() { ConsumeLoop(stoken); });
+    m_dispatcher = std::thread([this]() { DispatchLoop(); });
+    m_consumer = std::thread([this]() { ConsumeLoop(); });
     LOG_INFO("Engine finished starting");
 }
 
 void Engine::Stop() {
     LOG_INFO("Stopping engine");
-    if (m_running.exchange(false, std::memory_order_relaxed)) return;
-
-    m_stopSource.request_stop();
+    if (!m_running.exchange(false)) return;
     m_receiver.Stop();
     m_pool.join();
+    m_dispatcher.join();
+    m_consumer.join();
+
     LOG_INFO("Engine stopped");
 }
 
@@ -134,11 +138,11 @@ Verdict Engine::MatchRules(const Event& event) {
     return v;
 }
 
-void Engine::DispatchLoop(std::stop_token st) {
+void Engine::DispatchLoop() {
     Event e;
     try {
         LOG_INFO("Dispatch loop: started");
-        while (!st.stop_requested()) {
+        while (m_running) {
             bool got = m_eventQueue->wait_dequeue_timed(e, std::chrono::milliseconds(100));
             if (got)
             {
@@ -162,10 +166,10 @@ void Engine::DispatchLoop(std::stop_token st) {
     }
 }
 
-void Engine::ConsumeLoop(std::stop_token st) {
+void Engine::ConsumeLoop() {
     Verdict v;
     LOG_INFO("Consume loop: started");
-    while (!st.stop_requested()) {
+    while (m_running) {
         bool got = m_verdictQueue->wait_dequeue_timed(v, std::chrono::milliseconds(100));
         if (got) {
             NotifySubscribers(v);

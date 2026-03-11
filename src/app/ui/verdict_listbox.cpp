@@ -13,13 +13,20 @@ namespace ui {
     {
         ImGui::PushID(this);
 
-        if (ImGui::BeginListBox("##Verdicts", ImVec2(-FLT_MIN, -ImGui::GetFrameHeight())))
-        {
-            const auto& verdicts = m_verdictBuffer.GetVerdicts();
+        constexpr int PAGE_SIZE = 50;
+        size_t totalVerdicts = m_verdictBuffer.GetTotalVerdicts();
+        int totalPages = (totalVerdicts + PAGE_SIZE - 1) / PAGE_SIZE;
 
-            for (int i = 0; i < (int)verdicts.size(); ++i)
+        m_currentPage = std::clamp(m_currentPage, 0, totalPages > 0 ? totalPages - 1 : 0);
+
+        auto verdictsPage = m_verdictBuffer.GetVerdictsPage(m_currentPage, PAGE_SIZE);
+        int verdictStartIdx = m_currentPage * PAGE_SIZE;
+
+        if (ImGui::BeginListBox("##Verdicts", ImVec2(-FLT_MIN, -ImGui::GetFrameHeightWithSpacing() - ImGui::GetTextLineHeight())))
+        {
+            for (int i = 0; i < (int)verdictsPage.size(); ++i)
             {
-                const auto& verdict = verdicts[i];
+                const auto& verdict = verdictsPage[i];
 
                 int eventRecordId = 0;
                 auto it = verdict.payload.fields.find("EventRecordID");
@@ -27,36 +34,45 @@ namespace ui {
                     eventRecordId = std::stoi(it->second);
                 }
 
-                bool isSelected = (m_selectedVerdictIdx == i);
+                bool isSelected = (m_selectedVerdictIdx == verdictStartIdx + i);
 
                 std::string displayName = std::format("{} #{:<5}| {}",
                     verdict.result ? "●" : "○",
                     verdict.event_id,
                     eventRecordId
                 );
+
                 ImGui::PushID(i);
 
-                if (verdict.result) {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
-                }
-                else {
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-                }
+                ImGui::PushStyleColor(ImGuiCol_Text,
+                    verdict.result ? ImGui::GetStyleColorVec4(ImGuiCol_Text) :
+                    ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 
                 if (ImGui::Selectable(displayName.c_str(), isSelected))
                 {
-                    if (m_selectedVerdictIdx != i) {
-                        m_selectedVerdictIdx = i;
+                    if (m_selectedVerdictIdx != verdictStartIdx + i) {
+                        m_selectedVerdictIdx = verdictStartIdx + i;
                         SetIsUpdated(true);
                     }
                 }
-                ImGui::PopStyleColor();
 
+                ImGui::PopStyleColor();
                 ImGui::PopID();
             }
 
             ImGui::EndListBox();
         }
+
+        // Pagination controls
+        ImGui::Spacing();
+        if (ImGui::Button("<") && m_currentPage > 0) m_currentPage--;
+        ImGui::SameLine();
+        ImGui::Text("Page %d / %d", m_currentPage + 1, totalPages);
+        ImGui::SameLine();
+        if (ImGui::Button(">") && m_currentPage < totalPages - 1) m_currentPage++;
+
+        ImGui::SameLine();
+        ImGui::Text("%d-%d / %d", verdictStartIdx + 1, verdictStartIdx + (int)verdictsPage.size(), (int)totalVerdicts);
 
         ImGui::PopID();
     }
@@ -79,4 +95,8 @@ namespace ui {
         m_selectedVerdictIdx = -1;
     }
 
+    std::vector<sigma::Verdict> VerdictListBox::GetVerdicts() const
+    {
+        return m_verdictBuffer.GetVerdicts();
+    }
 } // namespace ui

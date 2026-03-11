@@ -14,12 +14,15 @@ namespace ui {
         void Show() override;
         sigma::Verdict GetSelectedHandle() const override;
 
+        std::vector<sigma::Verdict> GetVerdicts() const;
+
     protected:
         void ClearCurrentSelection() override;
 
     private:
         bl::VerdictBuffer m_verdictBuffer;
         int m_selectedVerdictIdx = -1;
+        int m_currentPage = 0;
     };
 
 } // namespace ui

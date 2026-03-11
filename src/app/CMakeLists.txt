@@ -6,9 +6,11 @@ gui_launcher.cpp
 gui_host.cpp
 engine_config.cpp
 verdict_buffer.cpp
+verdict_exporter.cpp
 )
 
 target_link_libraries(launcher PRIVATE
+ryml
 imgui
 imgui_filebrowser
 Threads::Threads

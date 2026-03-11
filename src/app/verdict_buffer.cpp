@@ -37,4 +37,23 @@ namespace bl {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_uiVerdicts;
     }
+
+    std::vector<sigma::Verdict> VerdictBuffer::GetVerdictsPage(size_t page, size_t pageSize) const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        size_t total = m_uiVerdicts.size();
+        size_t start = page * pageSize;
+        if (start >= total) return {};
+
+        size_t end = std::min(start + pageSize, total);
+        return std::vector<sigma::Verdict>(m_uiVerdicts.begin() + start,
+            m_uiVerdicts.begin() + end);
+    }
+
+    size_t VerdictBuffer::GetTotalVerdicts() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_uiVerdicts.size();
+    }
 } // namespace bl

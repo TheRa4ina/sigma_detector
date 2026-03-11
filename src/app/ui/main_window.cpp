@@ -1,6 +1,7 @@
 #include "main_window.h"
 #include <imgui_internal.h>
 #include <app/fonts/IconFontAwesome5.h>
+#include <app/verdict_exporter.h>
 #include <misc/cpp/imgui_stdlib.h> 
 #include <imgui.h>
 #include <imfilebrowser.h>
@@ -11,6 +12,7 @@
 static constexpr const char* VERDICTS = "Verdicts";
 static constexpr const char* RULES = "Rules";
 static constexpr const char* VIEWER = "Viewer";
+
 
 namespace {
     std::string ReadFileToString(const std::filesystem::path& path) {
@@ -39,6 +41,7 @@ namespace {
         ss << "}";
         return ss.str();
     }
+
 }
 
 namespace ui
@@ -49,10 +52,8 @@ MainWindow::MainWindow(std::shared_ptr<sigma::Engine> engine)
     , m_config(std::make_shared<bl::EngineConfig>())
     , m_verdictListBox(m_engine)
     , m_ruleListBox(m_config)
-    , m_fileBrowser(std::make_shared<ImGui::FileBrowser>(ImGuiFileBrowserFlags_MultipleSelection))
+    , m_fileBrowser(std::make_shared<ImGui::FileBrowser>())
 {
-    m_fileBrowser->SetTitle("Select a rule file");
-    m_fileBrowser->SetTypeFilters({ ".yml",".yaml" });
 }
 
 void MainWindow::Show()
@@ -81,64 +82,109 @@ void MainWindow::Show()
     try
     {
         ImGui::Begin(RULES);
+        try {
 
-        ImGui::BeginDisabled(m_engine->IsRunning());
-        if (ImGui::Button(ICON_FA_PLUS_SQUARE)) {
-            m_fileBrowser->Open();
+            ImGui::BeginDisabled(m_engine->IsRunning());
+            if (ImGui::Button(ICON_FA_PLUS_SQUARE)) {
+                //have to recreate each time cause there is not setFlag function
+                const auto dir = m_fileBrowser->GetPwd();
+                m_fileBrowser = std::make_shared<ImGui::FileBrowser>(ImGuiFileBrowserFlags_MultipleSelection);
+                m_fileBrowser->SetTitle("Select a rule file");
+                m_fileBrowser->SetTypeFilters({ ".yml",".yaml" });
+                m_fileBrowser->SetPwd(dir);
+                m_fileBrowserPurpose = FileBrowserPurpose::AddRule;
+                m_fileBrowser->Open();
+            }
+            ImGui::SetItemTooltip("Add rule from file");
+
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_MINUS_SQUARE)) {
+                m_config->RemoveRulePath(m_ruleListBox.GetSelectedHandle());
+                m_ruleListBox.ResetSelected();
+            }
+            ImGui::SetItemTooltip("Remove rule from list");
+            ImGui::EndDisabled();
+
+            m_ruleListBox.Show();
         }
-        ImGui::SetItemTooltip("Add rule from file");
-
-        ImGui::SameLine();
-        if (ImGui::Button(ICON_FA_MINUS_SQUARE)) {
-            m_config->RemoveRulePath(m_ruleListBox.GetSelectedHandle());
+        catch (const std::exception& e)
+        {
             m_ruleListBox.ResetSelected();
+            m_errorMessage = e.what();
         }
-        ImGui::SetItemTooltip("Remove rule from list");
-        ImGui::EndDisabled();
-
-        m_ruleListBox.Show();
         ImGui::End(); // RULES
 
+        ImGui::Begin(VERDICTS);
+        try {
+            if (m_engine->IsRunning())
+            {
+                if (ImGui::Button(ICON_FA_STOP)) {
+                    m_engine->Stop();
+
+                    m_ruleListBox.ClearSnapshots();
+                }
+                ImGui::SetItemTooltip("Stop engine");
+            }
+            else
+            {
+                if (ImGui::Button(ICON_FA_PLAY)) {
+                    auto rulePaths = m_config->GetRulePaths();
+                    try {
+                        m_engine->SetRules(rulePaths);
+                        m_engine->Start();
+
+                        m_ruleListBox.CaptureSnapshots();
+                    }
+                    catch (const std::exception& e) {
+                        m_errorMessage = std::format("Error starting engine:\n {}", e.what());
+
+                    }
+                }
+                ImGui::SetItemTooltip("Start engine");
+            }
+
+            ImGui::SameLine();
+            if (ImGui::Button(ICON_FA_SAVE))
+            {
+                const auto dir = m_fileBrowser->GetPwd();
+                m_fileBrowserPurpose = FileBrowserPurpose::ExportVerdicts;
+                m_fileBrowser = std::make_shared<ImGui::FileBrowser>(ImGuiFileBrowserFlags_EnterNewFilename);
+                m_fileBrowser->SetTitle("Export verdicts");
+                m_fileBrowser->SetTypeFilters({ ".json" });
+                m_fileBrowser->SetPwd(dir);
+                m_fileBrowserPurpose = FileBrowserPurpose::ExportVerdicts;
+                m_fileBrowser->Open();
+            }
+
+            ImGui::SetItemTooltip("Export verdicts");
+
+            m_verdictListBox.Show();
+        }
+        catch (const std::exception& e)
+        {
+            m_errorMessage = e.what();
+        }
+        ImGui::End(); // VERDICTS
+
+        /// File browser
         m_fileBrowser->Display();
         if (m_fileBrowser->HasSelected())
         {
-            m_config->AddRulePath(m_fileBrowser->GetSelected());
-            m_fileBrowser->ClearSelected();
-        }
-
-        ImGui::Begin(VERDICTS);
-
-        if (m_engine->IsRunning())
-        {
-            if (ImGui::Button(ICON_FA_STOP)) {
-                m_engine->Stop();
-
-                m_ruleListBox.ClearSnapshots();
+            if (m_fileBrowserPurpose == FileBrowserPurpose::AddRule)
+            {
+                m_config->AddRulePath(m_fileBrowser->GetSelected());
+                m_fileBrowser->ClearSelected();
             }
-            ImGui::SetItemTooltip("Stop engine");
-        }
-        else
-        {
-            if (ImGui::Button(ICON_FA_PLAY)) {
-                auto rulePaths = m_config->GetRulePaths();
-                try {
-                    m_engine->SetRules(rulePaths);
-                    m_engine->Start();
-                    
-                    m_ruleListBox.CaptureSnapshots();
-                }
-                catch (const std::exception& e) {
-                    m_errorMessage = std::format("Error starting engine:\n {}", e.what());
+            else if (m_fileBrowserPurpose == FileBrowserPurpose::ExportVerdicts)
+            {
+                auto verdicts = m_verdictListBox.GetVerdicts();
+                if (verdicts.empty())
+                    throw std::runtime_error("No verdicts to export");
 
-                }
+                bl::exporter::ExportJSON(m_fileBrowser->GetSelected(), verdicts);
+                m_fileBrowser->ClearSelected();
             }
-            ImGui::SetItemTooltip("Start engine");
         }
-
-        m_verdictListBox.Show();
-        ImGui::End(); // VERDICTS
-
-        ImGui::Begin(VIEWER);
 
         if (m_verdictListBox.IsSelectionUpdated()) {
             m_ruleListBox.ResetSelected();
@@ -161,6 +207,7 @@ void MainWindow::Show()
             m_viewerBuffer.assign(fileContents);
         }
 
+        ImGui::Begin(VIEWER);
         ImVec2 editor_size = ImGui::GetContentRegionAvail();
         ImGui::InputTextMultiline("##editor", &m_viewerBuffer, editor_size, ImGuiInputTextFlags_WordWrap | ImGuiInputTextFlags_ReadOnly);
 
