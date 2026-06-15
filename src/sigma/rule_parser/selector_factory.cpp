@@ -30,13 +30,12 @@ namespace sigma {
                     "\" of type: \"" + ModUtils::ToString(modType) + "\"");
             }
             if (modType != ModType::Generic) {
-                ctx.type = modType; // narrowing
+                ctx.type = modType;
             }
 
             ApplyMod(ctx, m);
         }
 
-        // now choose correct selector type
         switch (ctx.grouping) {
         case GroupingMode::Grouped:
             return std::make_unique<GroupedSelector>(

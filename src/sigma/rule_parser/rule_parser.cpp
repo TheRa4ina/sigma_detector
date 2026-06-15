@@ -3,6 +3,7 @@
 #include <rule_parser/logsource.h>
 #include <rule_parser/rule.h>
 #include <ryml_std.hpp>
+#include <format>
 namespace sigma {
 
     namespace {
@@ -49,8 +50,17 @@ namespace sigma {
             const ryml::ConstNodeRef& selectionYaml = selectionsYaml.child(i);
             std::vector<std::unique_ptr<ISelectorBase>> selectors;
 
+            bool isAll = selectionYaml.is_map();
+
             for (auto selectorYaml : selectionYaml) {
-                // Parse key
+                if (!isAll) {
+                    if (selectorYaml.num_children() != 1) {
+                        throw std::runtime_error(std::format(
+                            "single list item should contain one child. Current amount is [{}]"
+                            , selectorYaml.num_children()));
+                    }
+                    selectorYaml = selectorYaml.child(0);
+                }
                 c4::csubstr key = selectorYaml.key();
                 auto keyParts = key.split('|');
 
@@ -73,7 +83,7 @@ namespace sigma {
             }
 
             std::string selectionName = utils::ToString(selectionYaml.key());
-            selections.emplace_back(SelectionFactory::Create(selectionName,std::move(selectors), true));
+            selections.emplace_back(SelectionFactory::Create(selectionName,std::move(selectors), isAll));
         }
         auto condition = selectionsYaml.child(childNum - 1);
 

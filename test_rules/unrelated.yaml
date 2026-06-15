@@ -16,4 +16,4 @@ detection:
     condition: 1 of selection*
 falsepositives:
     - detects nothing
-level: low
+level: low 

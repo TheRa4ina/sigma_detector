@@ -157,7 +157,6 @@ void Engine::DispatchLoop() {
                     }
                     });
             }
-
         }
         LOG_INFO("Dispatch loop: ended");
     }

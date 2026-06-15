@@ -15,6 +15,9 @@ detection:
         CommandLine|endswith:
             - 'notepad++.exe'
             - 'notepadpp.exe'
+        CurrentDirectory|startswith:
+            - 'C'
+            - 'D'
     condition: all of selection*
 falsepositives:
     - ends in notepad++.exe
